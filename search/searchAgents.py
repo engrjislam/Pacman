@@ -288,6 +288,10 @@ class CornersProblem(search.SearchProblem):
         # Please add any code here which you would like to use
         # in initializing the problem
         "*** YOUR CODE HERE ***"
+        # ----------------------------------------------------------------------- #
+        self.visualize = True
+        self._visited, self._visitedlist = {}, []
+        # ----------------------------------------------------------------------- #
 
     def getStartState(self):
         """
@@ -295,14 +299,26 @@ class CornersProblem(search.SearchProblem):
         space)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # util.raiseNotDefined()
+        
+        # ----------------------------------------------------------------------- #
+        # state is a tuple: (coordinates, list of corners that have not been visited)
+        return (self.startingPosition, list(self.corners))
+        # ----------------------------------------------------------------------- #
 
     def isGoalState(self, state):
         """
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # util.raiseNotDefined()
+        
+        # ----------------------------------------------------------------------- #
+        # state[1] is the list of corners that have not been visited, state[1] == [] checks if all corners have been -
+        # visited i.e. the goal state
+        isGoal = (state[1] == [])
+        return isGoal
+        # ----------------------------------------------------------------------- #
 
     def getSuccessors(self, state):
         """
@@ -325,6 +341,32 @@ class CornersProblem(search.SearchProblem):
             #   hitsWall = self.walls[nextx][nexty]
 
             "*** YOUR CODE HERE ***"
+            # ----------------------------------------------------------------------- #
+            # split the coordinates into x and y variables
+            x, y = state[0]
+
+            # figure out next position in that direction
+            dx, dy = Actions.directionToVector(action)
+            nextx, nexty = int(x + dx), int(y + dy)
+            hitsWall = self.walls[nextx][nexty]
+
+            # if the pacman doesn't kill himself by banging into a wall
+            if not self.walls[nextx][nexty]:
+                nextPosition  = (nextx, nexty)
+                cornersLeft = state[1][:]
+
+                #set cost to 1
+                cost = 1
+
+                # if the next position is a corner
+                if nextPosition in cornersLeft:
+                    # remove the new position from the list
+                    cornersLeft.remove(nextPosition)
+                # next state 
+                nextState = (nextPosition, cornersLeft)
+                # append a successor to the successor list in this format ((position, list of corners), action, 1)
+                successors.append( ( nextState, action, cost) )
+            # ----------------------------------------------------------------------- #
 
         self._expanded += 1 # DO NOT CHANGE
         return successors
@@ -360,7 +402,76 @@ def cornersHeuristic(state, problem):
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
     "*** YOUR CODE HERE ***"
-    return 0 # Default to trivial solution
+    # ----------------------------------------------------------------------- #
+    # set default to
+    heuristic = 0 
+    # set the corners point to be visited
+    cornersLeft = state[1][:]  
+    # set the reference point to the current position
+    referencePoint = state[0] 
+  
+    while len(cornersLeft) > 0:
+        # get closest point
+        closestCorner = closestPoint(referencePoint, cornersLeft)
+        # calculate heuristic 
+        heuristic += euclidieanDistance(referencePoint, closestCorner)
+        # set closest corner to reference point
+        referencePoint = closestCorner
+        # delete closest corner from the remaining corners list
+        cornersLeft.remove(closestCorner)
+    # return calculated heuristic 
+    return heuristic
+    
+def closestPoint(fromPoint, candidatesList):
+    """
+    Calculate closest point 
+    :params:
+        ::(int) fromPoint::
+            :::reference point as a single coordinate:::
+        ::(list) candidatesList::
+            :::other coordinates that would use to calculate closest point:::
+    :return:
+        ::(x, y) closestCorner::
+            :::the closest coordinate with respect to the reference point 'fromPoint':::
+    """
+    # return None if candidatesList is empty
+    if len(candidatesList) == 0:
+        return None
+
+    # set first coordinate from candidatesList as closest corner 
+    closestCorner = candidatesList[0]
+    # calculate cost for closestCorner with respect to the reference point 'fromPoint'
+    closestCost = euclidieanDistance(fromPoint, closestCorner)
+    
+    # get minimum closest cost with respect to the reference point 'fromPoint' using candidatesList 
+    for candidate in candidatesList[1:]:
+        # get closest cost for current candidate
+        thisCost = euclidieanDistance(fromPoint, candidate)
+        # compare current 'thisCost' and previous closest cost
+        if closestCost > thisCost:
+            # if current cost is minimum then previous then
+            # set newly calculated closest cost
+            closestCost = thisCost            
+            # set newly calculated closest cost
+            closestCorner = candidate
+    # return closest corner
+    return closestCorner
+    
+def euclidieanDistance (pointA, pointB):
+    """
+    Calculate euclidiean distance
+    :params:
+        ::(x1, y1) pointA::
+            ::: first coordinate :::
+        ::(x2, y2) pointB::
+            ::: second coordinate :::
+    :return:
+        ::(int)::
+            ::: calculated euclidiean distance :::
+    """
+    # return euclidiean distance
+    return abs(pointA[0] - pointB[0]) + abs(pointA[1] - pointB[1])
+    # ----------------------------------------------------------------------- #
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
@@ -454,7 +565,15 @@ def foodHeuristic(state, problem):
     """
     position, foodGrid = state
     "*** YOUR CODE HERE ***"
-    return 0
+    # ----------------------------------------------------------------------- #
+    furthest = 0
+    foodList = foodGrid.asList()
+    for i in range(0,len(foodList)):
+        dist = mazeDistance(position,foodList[i],problem.startingGameState)
+        if dist > furthest: furthest = dist
+
+    return furthest    
+    # ----------------------------------------------------------------------- #
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
@@ -485,7 +604,13 @@ class ClosestDotSearchAgent(SearchAgent):
         problem = AnyFoodSearchProblem(gameState)
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # util.raiseNotDefined()
+        
+        # ----------------------------------------------------------------------- #
+        actions = search.bfs(problem)
+        return actions
+        # ----------------------------------------------------------------------- #
+        
 
 class AnyFoodSearchProblem(PositionSearchProblem):
     """
@@ -521,7 +646,15 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         x,y = state
 
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # util.raiseNotDefined()
+        
+        # ----------------------------------------------------------------------- #
+        foodList = self.food.asList()
+        distance, food = min([(util.manhattanDistance(state, food), food) for food in foodList])
+        isGoal = state == food
+        
+        return isGoal
+        # ----------------------------------------------------------------------- #
 
 def mazeDistance(point1, point2, gameState):
     """
